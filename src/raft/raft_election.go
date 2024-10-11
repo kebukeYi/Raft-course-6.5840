@@ -102,7 +102,7 @@ func (raft *Raft) startElection(term int) {
 			raft.becomeFollowerLocked(reply.Term)
 			return
 		}
-
+		// 查看当前任期和角色是否发生了变更
 		if raft.contextLockIsLost(candidate, term) {
 			Log(raft.me, raft.currentTerm, DVote, "-> S%d, Lost context, abort RequestVoteReply", peer)
 			return
