@@ -14,7 +14,7 @@ func (m *MemoryKVStateMachine) Get(key string) (string, Err) {
 	if value, ok := m.KV[key]; ok {
 		return value, OK
 	}
-	return "", ErrNotKey
+	return "", ErrNoKey
 }
 
 func (m *MemoryKVStateMachine) Put(key, value string) Err {

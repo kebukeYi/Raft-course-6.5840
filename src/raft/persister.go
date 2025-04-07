@@ -13,7 +13,7 @@ import "sync"
 
 type Persister struct {
 	mu        sync.Mutex
-	raftstate []byte // 元信息和 tailLog[]
+	raftstate []byte
 	snapshot  []byte
 }
 

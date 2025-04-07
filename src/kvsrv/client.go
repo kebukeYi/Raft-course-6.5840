@@ -1,11 +1,11 @@
-package kvraft
+package kvsrv
 
 import "raftCourse/labrpc"
 import "crypto/rand"
 import "math/big"
 
 type Clerk struct {
-	servers []*labrpc.ClientEnd
+	server *labrpc.ClientEnd
 	// You will have to modify this struct.
 }
 
@@ -16,9 +16,9 @@ func nrand() int64 {
 	return x
 }
 
-func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
+func MakeClerk(server *labrpc.ClientEnd) *Clerk {
 	ck := new(Clerk)
-	ck.servers = servers
+	ck.server = server
 	// You'll have to add code here.
 	return ck
 }
@@ -28,7 +28,7 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 // keeps trying forever in the face of all other errors.
 //
 // you can send an RPC with code like this:
-// ok := ck.servers[i].Call("KVServer."+op, &args, &reply)
+// ok := ck.server.Call("KVServer.Get", &args, &reply)
 //
 // the types of args and reply (including whether they are pointers)
 // must match the declared types of the RPC handler function's
@@ -42,18 +42,21 @@ func (ck *Clerk) Get(key string) string {
 // shared by Put and Append.
 //
 // you can send an RPC with code like this:
-// ok := ck.servers[i].Call("KVServer.PutAppend", &args, &reply)
+// ok := ck.server.Call("KVServer."+op, &args, &reply)
 //
 // the types of args and reply (including whether they are pointers)
 // must match the declared types of the RPC handler function's
 // arguments. and reply must be passed as a pointer.
-func (ck *Clerk) PutAppend(key string, value string, op string) {
+func (ck *Clerk) PutAppend(key string, value string, op string) string {
 	// You will have to modify this function.
+	return ""
 }
 
 func (ck *Clerk) Put(key string, value string) {
 	ck.PutAppend(key, value, "Put")
 }
-func (ck *Clerk) Append(key string, value string) {
-	ck.PutAppend(key, value, "Append")
+
+// Append value to key's value and return that value
+func (ck *Clerk) Append(key string, value string) string {
+	return ck.PutAppend(key, value, "Append")
 }

@@ -3,30 +3,28 @@ package raft
 //
 // Raft tests.
 //
-// we will use the original raft_test.go to test your code for grading.
+// we will use the original test_test.go to test your code for grading.
 // so, while you can modify this code to help you debug, please
 // test with the original before submitting.
 //
 
-import (
-	"fmt"
-	"math/rand"
-	"sync"
-	"sync/atomic"
-	"testing"
-	"time"
-)
+import "testing"
+import "fmt"
+import "time"
+import "math/rand"
+import "sync/atomic"
+import "sync"
 
 // The tester generously allows solutions to complete elections in one second
 // (much more than the paper's range of timeouts).
 const RaftElectionTimeout = 1000 * time.Millisecond
 
-func TestInitialElectionPartA(t *testing.T) {
+func TestInitialElection3A(t *testing.T) {
 	servers := 3
 	cfg := make_config(t, servers, false, false)
 	defer cfg.cleanup()
 
-	cfg.begin("Test (PartA): initial election")
+	cfg.begin("Test (3A): initial election")
 
 	// is a leader elected?
 	cfg.checkOneLeader()
@@ -43,7 +41,7 @@ func TestInitialElectionPartA(t *testing.T) {
 	time.Sleep(2 * RaftElectionTimeout)
 	term2 := cfg.checkTerms()
 	if term1 != term2 {
-		fmt.Printf("test_test warning: term changed even though there were no failures")
+		fmt.Printf("warning: term changed even though there were no failures")
 	}
 
 	// there should still be a leader.
@@ -52,12 +50,12 @@ func TestInitialElectionPartA(t *testing.T) {
 	cfg.end()
 }
 
-func TestReElectionPartA(t *testing.T) {
+func TestReElection3A(t *testing.T) {
 	servers := 3
 	cfg := make_config(t, servers, false, false)
 	defer cfg.cleanup()
 
-	cfg.begin("Test (PartA): election after network failure")
+	cfg.begin("Test (3A): election after network failure")
 
 	leader1 := cfg.checkOneLeader()
 
@@ -92,12 +90,12 @@ func TestReElectionPartA(t *testing.T) {
 	cfg.end()
 }
 
-func TestManyElectionsPartA(t *testing.T) {
+func TestManyElections3A(t *testing.T) {
 	servers := 7
 	cfg := make_config(t, servers, false, false)
 	defer cfg.cleanup()
 
-	cfg.begin("Test (PartA): multiple elections")
+	cfg.begin("Test (3A): multiple elections")
 
 	cfg.checkOneLeader()
 
@@ -125,12 +123,12 @@ func TestManyElectionsPartA(t *testing.T) {
 	cfg.end()
 }
 
-func TestBasicAgreePartB(t *testing.T) {
+func TestBasicAgree3B(t *testing.T) {
 	servers := 3
 	cfg := make_config(t, servers, false, false)
 	defer cfg.cleanup()
 
-	cfg.begin("Test (PartB): basic agreement")
+	cfg.begin("Test (3B): basic agreement")
 
 	iters := 3
 	for index := 1; index < iters+1; index++ {
@@ -150,12 +148,12 @@ func TestBasicAgreePartB(t *testing.T) {
 
 // check, based on counting bytes of RPCs, that
 // each command is sent to each peer just once.
-func TestRPCBytesPartB(t *testing.T) {
+func TestRPCBytes3B(t *testing.T) {
 	servers := 3
 	cfg := make_config(t, servers, false, false)
 	defer cfg.cleanup()
 
-	cfg.begin("Test (PartB): RPC byte count")
+	cfg.begin("Test (3B): RPC byte count")
 
 	cfg.one(99, servers, false)
 	bytes0 := cfg.bytesTotal()
@@ -182,12 +180,12 @@ func TestRPCBytesPartB(t *testing.T) {
 }
 
 // test just failure of followers.
-func TestFollowerFailurePartB(t *testing.T) {
+func TestFollowerFailure3B(t *testing.T) {
 	servers := 3
 	cfg := make_config(t, servers, false, false)
 	defer cfg.cleanup()
 
-	cfg.begin("Test (PartB): test progressive failure of followers")
+	cfg.begin("Test (3B): test progressive failure of followers")
 
 	cfg.one(101, servers, false)
 
@@ -227,12 +225,12 @@ func TestFollowerFailurePartB(t *testing.T) {
 }
 
 // test just failure of leaders.
-func TestLeaderFailurePartB(t *testing.T) {
+func TestLeaderFailure3B(t *testing.T) {
 	servers := 3
 	cfg := make_config(t, servers, false, false)
 	defer cfg.cleanup()
 
-	cfg.begin("Test (PartB): test failure of leaders")
+	cfg.begin("Test (3B): test failure of leaders")
 
 	cfg.one(101, servers, false)
 
@@ -268,12 +266,12 @@ func TestLeaderFailurePartB(t *testing.T) {
 
 // test that a follower participates after
 // disconnect and re-connect.
-func TestFailAgreePartB(t *testing.T) {
+func TestFailAgree3B(t *testing.T) {
 	servers := 3
 	cfg := make_config(t, servers, false, false)
 	defer cfg.cleanup()
 
-	cfg.begin("Test (PartB): agreement after follower reconnects")
+	cfg.begin("Test (3B): agreement after follower reconnects")
 
 	cfg.one(101, servers, false)
 
@@ -302,12 +300,12 @@ func TestFailAgreePartB(t *testing.T) {
 	cfg.end()
 }
 
-func TestFailNoAgreePartB(t *testing.T) {
+func TestFailNoAgree3B(t *testing.T) {
 	servers := 5
 	cfg := make_config(t, servers, false, false)
 	defer cfg.cleanup()
 
-	cfg.begin("Test (PartB): no agreement if too many followers disconnect")
+	cfg.begin("Test (3B): no agreement if too many followers disconnect")
 
 	cfg.one(10, servers, false)
 
@@ -353,12 +351,12 @@ func TestFailNoAgreePartB(t *testing.T) {
 	cfg.end()
 }
 
-func TestConcurrentStartsPartB(t *testing.T) {
+func TestConcurrentStarts3B(t *testing.T) {
 	servers := 3
 	cfg := make_config(t, servers, false, false)
 	defer cfg.cleanup()
 
-	cfg.begin("Test (PartB): concurrent Start()s")
+	cfg.begin("Test (3B): concurrent Start()s")
 
 	var success bool
 loop:
@@ -454,12 +452,12 @@ loop:
 	cfg.end()
 }
 
-func TestRejoinPartB(t *testing.T) {
+func TestRejoin3B(t *testing.T) {
 	servers := 3
 	cfg := make_config(t, servers, false, false)
 	defer cfg.cleanup()
 
-	cfg.begin("Test (PartB): rejoin of partitioned leader")
+	cfg.begin("Test (3B): rejoin of partitioned leader")
 
 	cfg.one(101, servers, true)
 
@@ -492,12 +490,12 @@ func TestRejoinPartB(t *testing.T) {
 	cfg.end()
 }
 
-func TestBackupPartB(t *testing.T) {
+func TestBackup3B(t *testing.T) {
 	servers := 5
 	cfg := make_config(t, servers, false, false)
 	defer cfg.cleanup()
 
-	cfg.begin("Test (PartB): leader backs up quickly over incorrect follower logs")
+	cfg.begin("Test (3B): leader backs up quickly over incorrect follower logs")
 
 	cfg.one(rand.Int(), servers, true)
 
@@ -564,22 +562,26 @@ func TestBackupPartB(t *testing.T) {
 	cfg.end()
 }
 
-func TestCountPartB(t *testing.T) {
+func TestCount3B(t *testing.T) {
 	servers := 3
 	cfg := make_config(t, servers, false, false)
 	defer cfg.cleanup()
-	cfg.begin("Test (PartB): RPC counts aren't too high")
+
+	cfg.begin("Test (3B): RPC counts aren't too high")
+
 	rpcs := func() (n int) {
 		for j := 0; j < servers; j++ {
 			n += cfg.rpcCount(j)
 		}
 		return
 	}
+
 	leader := cfg.checkOneLeader()
+
 	total1 := rpcs()
+
 	if total1 > 30 || total1 < 1 {
-		//if total1 > 300 || total1 < 1 {
-		t.Fatalf("too many or few RPCs (%d) to elect initial leader\n", total1)
+		t.Fatalf("too many or few RPCs (%v) to elect initial leader\n", total1)
 	}
 
 	var total2 int
@@ -664,19 +666,18 @@ loop:
 	}
 
 	if total3-total2 > 3*20 {
-		//if total3-total2 > 3*200 {
 		t.Fatalf("too many RPCs (%v) for 1 second of idleness\n", total3-total2)
 	}
 
 	cfg.end()
 }
 
-func TestPersist1PartC(t *testing.T) {
+func TestPersist13C(t *testing.T) {
 	servers := 3
 	cfg := make_config(t, servers, false, false)
 	defer cfg.cleanup()
 
-	cfg.begin("Test (PartC): basic persistence")
+	cfg.begin("Test (3C): basic persistence")
 
 	cfg.one(11, servers, true)
 
@@ -717,12 +718,12 @@ func TestPersist1PartC(t *testing.T) {
 	cfg.end()
 }
 
-func TestPersist2PartC(t *testing.T) {
+func TestPersist23C(t *testing.T) {
 	servers := 5
 	cfg := make_config(t, servers, false, false)
 	defer cfg.cleanup()
 
-	cfg.begin("Test (PartC): more persistence")
+	cfg.begin("Test (3C): more persistence")
 
 	index := 1
 	for iters := 0; iters < 5; iters++ {
@@ -763,12 +764,12 @@ func TestPersist2PartC(t *testing.T) {
 	cfg.end()
 }
 
-func TestPersist3PartC(t *testing.T) {
+func TestPersist33C(t *testing.T) {
 	servers := 3
 	cfg := make_config(t, servers, false, false)
 	defer cfg.cleanup()
 
-	cfg.begin("Test (PartC): partitioned leader and one follower crash, leader restarts")
+	cfg.begin("Test (3C): partitioned leader and one follower crash, leader restarts")
 
 	cfg.one(101, 3, true)
 
@@ -801,12 +802,12 @@ func TestPersist3PartC(t *testing.T) {
 // alive servers isn't enough to form a majority, perhaps start a new server.
 // The leader in a new term may try to finish replicating log entries that
 // haven't been committed yet.
-func TestFigure8PartC(t *testing.T) {
+func TestFigure83C(t *testing.T) {
 	servers := 5
 	cfg := make_config(t, servers, false, false)
 	defer cfg.cleanup()
 
-	cfg.begin("Test (PartC): Figure 8")
+	cfg.begin("Test (3C): Figure 8")
 
 	cfg.one(rand.Int(), 1, true)
 
@@ -857,12 +858,12 @@ func TestFigure8PartC(t *testing.T) {
 	cfg.end()
 }
 
-func TestUnreliableAgreePartC(t *testing.T) {
+func TestUnreliableAgree3C(t *testing.T) {
 	servers := 5
 	cfg := make_config(t, servers, true, false)
 	defer cfg.cleanup()
 
-	cfg.begin("Test (PartC): unreliable agreement")
+	cfg.begin("Test (3C): unreliable agreement")
 
 	var wg sync.WaitGroup
 
@@ -886,12 +887,12 @@ func TestUnreliableAgreePartC(t *testing.T) {
 	cfg.end()
 }
 
-func TestFigure8UnreliablePartC(t *testing.T) {
+func TestFigure8Unreliable3C(t *testing.T) {
 	servers := 5
 	cfg := make_config(t, servers, true, false)
 	defer cfg.cleanup()
 
-	cfg.begin("Test (PartC): Figure 8 (unreliable)")
+	cfg.begin("Test (3C): Figure 8 (unreliable)")
 
 	cfg.one(rand.Int()%10000, 1, true)
 
@@ -948,9 +949,9 @@ func internalChurn(t *testing.T, unreliable bool) {
 	defer cfg.cleanup()
 
 	if unreliable {
-		cfg.begin("Test (PartC): unreliable churn")
+		cfg.begin("Test (3C): unreliable churn")
 	} else {
-		cfg.begin("Test (PartC): churn")
+		cfg.begin("Test (3C): churn")
 	}
 
 	stop := int32(0)
@@ -1086,11 +1087,11 @@ func internalChurn(t *testing.T, unreliable bool) {
 	cfg.end()
 }
 
-func TestReliableChurnPartC(t *testing.T) {
+func TestReliableChurn3C(t *testing.T) {
 	internalChurn(t, false)
 }
 
-func TestUnreliableChurnPartC(t *testing.T) {
+func TestUnreliableChurn3C(t *testing.T) {
 	internalChurn(t, true)
 }
 
@@ -1134,7 +1135,7 @@ func snapcommon(t *testing.T, name string, disconnect bool, reliable bool, crash
 		if disconnect == false && crash == false {
 			// make sure all followers have caught up, so that
 			// an InstallSnapshot RPC isn't required for
-			// TestSnapshotBasicPartD().
+			// TestSnapshotBasic3D().
 			cfg.one(rand.Int(), servers, true)
 		} else {
 			cfg.one(rand.Int(), servers-1, true)
@@ -1160,37 +1161,37 @@ func snapcommon(t *testing.T, name string, disconnect bool, reliable bool, crash
 	cfg.end()
 }
 
-func TestSnapshotBasicPartD(t *testing.T) {
-	snapcommon(t, "Test (PartD): snapshots basic", false, true, false)
+func TestSnapshotBasic3D(t *testing.T) {
+	snapcommon(t, "Test (3D): snapshots basic", false, true, false)
 }
 
-func TestSnapshotInstallPartD(t *testing.T) {
-	snapcommon(t, "Test (PartD): install snapshots (disconnect)", true, true, false)
+func TestSnapshotInstall3D(t *testing.T) {
+	snapcommon(t, "Test (3D): install snapshots (disconnect)", true, true, false)
 }
 
-func TestSnapshotInstallUnreliablePartD(t *testing.T) {
-	snapcommon(t, "Test (PartD): install snapshots (disconnect+unreliable)",
+func TestSnapshotInstallUnreliable3D(t *testing.T) {
+	snapcommon(t, "Test (3D): install snapshots (disconnect+unreliable)",
 		true, false, false)
 }
 
-func TestSnapshotInstallCrashPartD(t *testing.T) {
-	snapcommon(t, "Test (PartD): install snapshots (crash)", false, true, true)
+func TestSnapshotInstallCrash3D(t *testing.T) {
+	snapcommon(t, "Test (3D): install snapshots (crash)", false, true, true)
 }
 
-func TestSnapshotInstallUnCrashPartD(t *testing.T) {
-	snapcommon(t, "Test (PartD): install snapshots (unreliable+crash)", false, false, true)
+func TestSnapshotInstallUnCrash3D(t *testing.T) {
+	snapcommon(t, "Test (3D): install snapshots (unreliable+crash)", false, false, true)
 }
 
 // do the servers persist the snapshots, and
 // restart using snapshot along with the
 // tail of the log?
-func TestSnapshotAllCrashPartD(t *testing.T) {
+func TestSnapshotAllCrash3D(t *testing.T) {
 	servers := 3
 	iters := 5
 	cfg := make_config(t, servers, false, true)
 	defer cfg.cleanup()
 
-	cfg.begin("Test (PartD): crash and restart all servers")
+	cfg.begin("Test (3D): crash and restart all servers")
 
 	cfg.one(rand.Int(), servers, true)
 
@@ -1224,12 +1225,12 @@ func TestSnapshotAllCrashPartD(t *testing.T) {
 
 // do servers correctly initialize their in-memory copy of the snapshot, making
 // sure that future writes to persistent state don't lose state?
-func TestSnapshotInitPartD(t *testing.T) {
+func TestSnapshotInit3D(t *testing.T) {
 	servers := 3
 	cfg := make_config(t, servers, false, true)
 	defer cfg.cleanup()
 
-	cfg.begin("Test (PartD): snapshot initialization after crash")
+	cfg.begin("Test (3D): snapshot initialization after crash")
 	cfg.one(rand.Int(), servers, true)
 
 	// enough ops to make a snapshot

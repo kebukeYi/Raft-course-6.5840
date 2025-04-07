@@ -52,7 +52,7 @@ type config struct {
 	lastApplied []int
 	start       time.Time // time at which make_config() was called
 	// begin()/end() statistics
-	t0        time.Time // time at which raft_test.go called cfg.begin()
+	t0        time.Time // time at which test_test.go called cfg.begin()
 	rpcs0     int       // rpcTotal() at start of test
 	cmds0     int       // number of agreements
 	bytes0    int64
