@@ -49,15 +49,17 @@ package labrpc
 //   pass svc to srv.AddService()
 //
 
-import "raftCourse/labgob"
-import "bytes"
-import "reflect"
-import "sync"
-import "log"
-import "strings"
-import "math/rand"
-import "time"
-import "sync/atomic"
+import (
+	"bytes"
+	"log"
+	"math/rand"
+	"raftCourse/labgob"
+	"reflect"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+)
 
 type reqMsg struct {
 	endname  interface{} // name of sending ClientEnd
@@ -327,18 +329,6 @@ func (rn *Network) MakeEnd(endname interface{}) *ClientEnd {
 	rn.connections[endname] = nil
 
 	return e
-}
-
-func (rn *Network) DeleteEnd(endname interface{}) {
-	rn.mu.Lock()
-	defer rn.mu.Unlock()
-
-	if _, ok := rn.ends[endname]; !ok {
-		log.Fatalf("MakeEnd: %v doesn't exists\n", endname)
-	}
-	delete(rn.ends, endname)
-	delete(rn.enabled, endname)
-	delete(rn.connections, endname)
 }
 
 func (rn *Network) AddServer(servername interface{}, rs *Server) {
