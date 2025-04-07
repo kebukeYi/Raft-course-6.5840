@@ -141,6 +141,7 @@ func (raft *Raft) startElection(term int) {
 		go askForVoteToPeer(i, args)
 	}
 }
+
 func (raft *Raft) electionTicker() {
 	for !raft.Killed() {
 		raft.mux.Lock()
@@ -154,6 +155,7 @@ func (raft *Raft) electionTicker() {
 		time.Sleep(time.Duration(ms) * time.Millisecond)
 	}
 }
+
 func (raft *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *RequestVoteReply) bool {
 	ok := raft.peers[server].Call("Raft.RequestVote", args, reply)
 	return ok

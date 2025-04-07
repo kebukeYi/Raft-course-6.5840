@@ -9,6 +9,7 @@ func NewMemoryKVStateMachine() *MemoryKVStateMachine {
 		KV: make(map[string]string),
 	}
 }
+
 func (m *MemoryKVStateMachine) Get(key string) (string, Err) {
 	if value, ok := m.KV[key]; ok {
 		return value, OK

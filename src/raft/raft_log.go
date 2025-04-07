@@ -57,6 +57,7 @@ func (rl *RaftLog) persist(e *labgob.LabEncoder) {
 	e.Encode(rl.snapshotTerm)
 	e.Encode(rl.tailLog)
 }
+
 func (rl *RaftLog) size() int {
 	return rl.snapshotIndex + len(rl.tailLog)
 }
