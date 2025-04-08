@@ -18,6 +18,7 @@ package raft
 //
 
 import (
+	"fmt"
 	"sort"
 	"sync"
 	"sync/atomic"
@@ -73,7 +74,7 @@ type Raft struct {
 	electionTimeout time.Duration
 
 	// PartB
-	log        []LogEntry
+	// log        []LogEntry
 	nextIndex  []int
 	matchIndex []int
 
@@ -82,6 +83,10 @@ type Raft struct {
 	lastApplied int
 	applyCond   *sync.Cond
 	applyCh     chan ApplyMsg
+
+	// PartD
+	rlog        *RaftLog
+	snapPending bool
 }
 
 // GetState return currentTerm and whether this server
@@ -92,14 +97,6 @@ func (rf *Raft) GetState() (int, bool) {
 	defer rf.mu.Unlock()
 	return rf.currentTerm, rf.role == Leader
 
-}
-
-// Snapshot the service says it has created a snapshot that has
-// all info up to and including index. this means the
-// service no longer needs the log through (and including)
-// that index. Raft should now trim its log as much as possible.
-func (rf *Raft) Snapshot(index int, snapshot []byte) {
-	// Your code here (3D).
 }
 
 func (rf *Raft) becomeFollowerLocked(term int) {
@@ -142,15 +139,16 @@ func (rf *Raft) becomeLeaderLocked() {
 	LOG(rf.me, rf.currentTerm, DLeader, "%s -> Leader, For T%d", rf.role, rf.currentTerm)
 	rf.role = Leader
 	for i := 0; i < len(rf.peers); i++ {
-		rf.nextIndex[i] = len(rf.log)
+		rf.nextIndex[i] = rf.rlog.size()
 		rf.matchIndex[i] = 0
 	}
 }
 
 func (rf *Raft) isMoreUpDate(index int, term int) bool {
-	lastLogIndex := len(rf.log) - 1
-	lastLogTerm := rf.log[lastLogIndex].Term
-	LOG(rf.me, rf.currentTerm, DVote, "Compare last log, Me: [%d]T%d, Candidate: [%d]T%d", lastLogIndex, lastLogTerm, index, term)
+	lastLogIndex := rf.rlog.size() - 1
+	lastLogTerm := rf.rlog.at(lastLogIndex).Term
+	LOG(rf.me, rf.currentTerm, DVote, "Compare last log, Me: [%d]T%d, Candidate: [%d]T%d",
+		lastLogIndex, lastLogTerm, index, term)
 	if lastLogTerm != term {
 		return lastLogTerm > term
 	}
@@ -187,14 +185,15 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	if rf.role != Leader { // 直接进行比较即可
 		return 0, 0, false
 	}
-	rf.log = append(rf.log, LogEntry{
+	rf.rlog.append(LogEntry{
 		Command:      command,
 		CommandValid: true,
 		Term:         rf.currentTerm,
 	})
 	rf.persistLocked()
-	LOG(rf.me, rf.currentTerm, DLeader, "Leader accept log [%d]T%d", len(rf.log)-1, rf.currentTerm)
-	return len(rf.log) - 1, rf.currentTerm, true
+	size := rf.rlog.size() - 1
+	LOG(rf.me, rf.currentTerm, DLeader, "Leader accept log [%d]T%d", size, rf.currentTerm)
+	return size, rf.currentTerm, true
 }
 
 // Make the service or tester wants to create a Raft server. the ports
@@ -217,7 +216,7 @@ func Make(peers []*labrpc.ClientEnd, me int, persister *Persister, applyCh chan 
 	rf.currentTerm = 1
 	rf.votedFor = -1
 
-	rf.log = append(rf.log, LogEntry{Term: InvalidTerm})
+	// rf.log = append(rf.log, LogEntry{Term: InvalidTerm})
 	rf.nextIndex = make([]int, len(peers))
 	rf.matchIndex = make([]int, len(peers))
 
@@ -225,6 +224,8 @@ func Make(peers []*labrpc.ClientEnd, me int, persister *Persister, applyCh chan 
 	rf.lastApplied = 0
 	rf.applyCh = applyCh
 	rf.applyCond = sync.NewCond(&rf.mu)
+
+	rf.rlog = NewRaftLog(InvalidIndex, InvalidTerm, nil, nil)
 
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
@@ -258,4 +259,20 @@ func (rf *Raft) killed() bool {
 
 func (rf *Raft) contextLostLocked(role Role, term int) bool {
 	return !(rf.role == role && rf.currentTerm == term)
+}
+
+func (rf *Raft) logString() string {
+	var terms string
+	prevTerm := rf.rlog.at(0).Term
+	prevStart := 0
+	for i := 0; i < rf.rlog.size(); i++ {
+		if rf.rlog.at(i).Term != prevTerm {
+			terms += fmt.Sprintf(" [%d, %d]T%d;", prevStart, i-1, prevTerm)
+			prevTerm = rf.rlog.at(i).Term
+			prevStart = i
+		}
+	}
+	terms += fmt.Sprintf(" [%d, %d]T%d;", prevStart, rf.rlog.size()-1, prevTerm)
+
+	return terms
 }

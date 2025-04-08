@@ -55,7 +55,7 @@ func getEnvLevel() int {
 		var err error
 		level, err = strconv.Atoi(v)
 		if err != nil {
-			log.Fatalf("Invalid verbosity %v", v)
+			log.Fatalf("Invalid verbosity %v,err:%s", v, err)
 		}
 	}
 	return level

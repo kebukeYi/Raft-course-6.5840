@@ -1,6 +1,7 @@
 package raft
 
 import (
+	"fmt"
 	"math/rand"
 	"time"
 )
@@ -38,10 +39,10 @@ func (rf *Raft) startElection(term int) {
 		rf.mu.Lock()
 		defer rf.mu.Unlock()
 		if !ok {
-			LOG(rf.me, rf.currentTerm, DDebug, "Ask vote from %d, Lost or error", peer)
+			LOG(rf.me, rf.currentTerm, DDebug, "-> S%d, Ask vote, Lost or error", peer)
 			return
 		}
-
+		LOG(rf.me, rf.currentTerm, DDebug, "-> S%d, AskVote Reply=%v", peer, reply.String())
 		if reply.Term > rf.currentTerm {
 			rf.becomeFollowerLocked(reply.Term)
 			return
@@ -68,7 +69,7 @@ func (rf *Raft) startElection(term int) {
 		return
 	}
 
-	lastLogIndex := len(rf.log) - 1
+	lastLogIndex := rf.rlog.size() - 1
 	for i := 0; i < len(rf.peers); i++ {
 		if i == rf.me {
 			votedNum++
@@ -78,9 +79,9 @@ func (rf *Raft) startElection(term int) {
 			Term:         rf.currentTerm,
 			CandidateId:  rf.me,
 			LastLogIndex: lastLogIndex,
-			LastLogTerm:  rf.log[lastLogIndex].Term,
+			LastLogTerm:  rf.rlog.at(lastLogIndex).Term,
 		}
-
+		LOG(rf.me, rf.currentTerm, DDebug, "-> S%d, AskVote, Args=%v", i, args.String())
 		go voteFromPeers(i, args)
 	}
 }
@@ -101,6 +102,15 @@ type RequestVoteReply struct {
 	// Your data here (3A).
 	Term        int
 	VoteGranted bool
+}
+
+func (args *RequestVoteArgs) String() string {
+	return fmt.Sprintf("Candidate-%d T%d, Last:[%d]T%d",
+		args.CandidateId, args.Term, args.LastLogIndex, args.LastLogTerm)
+}
+func (reply *RequestVoteReply) String() string {
+	return fmt.Sprintf("T%d, VoteGranted: %v",
+		reply.Term, reply.VoteGranted)
 }
 
 // example code to send a RequestVote RPC to a server.
@@ -140,6 +150,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here (3A, 3B).
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
+	LOG(rf.me, rf.currentTerm, DDebug, "<- S%d, VoteAsked, Args=%v", args.CandidateId, args.String())
 
 	reply.Term = rf.currentTerm
 	reply.VoteGranted = false
