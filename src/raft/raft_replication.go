@@ -28,8 +28,10 @@ type AppendEntriesArgs struct {
 }
 
 type AppendEntriesReply struct {
-	Term    int
-	Success bool
+	Term          int
+	Success       bool
+	ConflictIndex int
+	ConflictTerm  int
 }
 
 func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
@@ -50,24 +52,37 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	if args.Term >= rf.currentTerm {
 		rf.becomeFollowerLocked(args.Term)
 	}
+	rf.reSetElectionBeat()
 
 	// 0 1 2 3 4 len=5
 	//   1 2 3 4 5 6
+	// follower 日志太短, 需要直接添加;
 	if args.PrevLogIndex >= len(rf.log) {
-		LOG(rf.me, rf.currentTerm, DLog2, "<- S%d, Reject Log, Follower log too short, Len:%d <= Prev:%d",
-			args.LeaderId, len(rf.log), args.PrevLogIndex)
+		reply.Term = InvalidTerm
+		reply.ConflictIndex = len(rf.log)
+		LOG(rf.me, rf.currentTerm, DLog2, "<- S%d, Reject Log, Follower log too short, Len:%d <= Prev:%d", args.LeaderId, len(rf.log), args.PrevLogIndex)
 		return
 	}
 
+	// follower 相同位置, 但是任期不同;
+	// leader 收到结果后,进行判断:
+	// - leader没有这个任期的日志, 根据传回的 ConflictIndex-1 进一步计算;
+	// - Leader日志中存在 ConfilictTerm 的日志, 则使用其任期内在Leader的首条日志位置,
+	//   重新向follower发送日志判断, 然后就将冲突任期的日志重新覆盖一次;
 	if rf.log[args.PrevLogIndex].Term != args.PrevLogTerm {
-		LOG(rf.me, rf.currentTerm, DLog2, "<- S%d, Reject Log, Prev log not match, [%d]: T%d != T%d",
-			args.LeaderId, args.PrevLogIndex, rf.log[args.PrevLogIndex].Term, args.PrevLogTerm)
+		reply.ConflictTerm = rf.log[args.PrevLogIndex].Term
+		reply.ConflictIndex = rf.findFirstLogIndexAtTerm(reply.ConflictTerm)
+		LOG(rf.me, rf.currentTerm, DLog2, "<- S%d, Reject Log, Prev log not match, [%d]: T%d != T%d", args.LeaderId, args.PrevLogIndex, rf.log[args.PrevLogIndex].Term, args.PrevLogTerm)
 		return
 	}
 
 	// 正好匹配,直接可逐个添加;
 	// L:    [p--------------]
 	// F: [---e]
+
+	// index匹配,但是term不匹配;
+	// L:    [p--------------]
+	// F: [---q]
 
 	// follower 缺失日志, 返回失败, leader进行日志回退;
 	// L:    [--------------]
@@ -93,19 +108,30 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		// 说明 当前 entry 已经在 follower日志存在了,继续下一个entry;
 	}
 	reply.Success = true
-
+	rf.persistLocked()
 	// TODO: handle the args.LeaderCommit
 	if args.LeaderCommit > rf.commitIndex {
 		LOG(rf.me, rf.currentTerm, DApply, "Follower update the commit index %d->%d", rf.commitIndex, args.LeaderCommit)
 		rf.commitIndex = min(args.LeaderCommit, len(rf.log)-1)
 		rf.applyCond.Signal()
 	}
-	rf.reSetElectionBeat()
 }
 
 func (rf *Raft) sendAppendEntries(server int, args *AppendEntriesArgs, reply *AppendEntriesReply) bool {
 	ok := rf.peers[server].Call("Raft.AppendEntries", args, reply)
 	return ok
+}
+
+func (rf *Raft) findFirstLogIndexAtTerm(term int) int {
+	for idx, entry := range rf.log {
+		if entry.Term == term {
+			return idx
+		} else if entry.Term > term {
+			break
+		}
+	}
+	return InvalidIndex
+
 }
 
 func (rf *Raft) startReplication(term int) bool {
@@ -132,13 +158,21 @@ func (rf *Raft) startReplication(term int) bool {
 		}
 
 		if !reply.Success {
-			idx := rf.nextIndex[peer] - 1
-			term := rf.log[idx].Term
-			// todo leader 进行日志回退检测;
-			for idx > 0 && rf.log[idx].Term == term {
-				idx--
+			preNext := rf.nextIndex[peer]
+
+			if reply.ConflictTerm == InvalidTerm {
+				rf.nextIndex[peer] = reply.ConflictIndex
+			} else {
+				findFirstLogIndexAtTerm := rf.findFirstLogIndexAtTerm(reply.ConflictTerm)
+				if findFirstLogIndexAtTerm == InvalidIndex {
+					rf.nextIndex[peer] = reply.ConflictIndex
+				} else {
+					rf.nextIndex[peer] = findFirstLogIndexAtTerm
+				}
 			}
-			rf.nextIndex[peer] = idx + 1
+
+			// avoid the late reply move the nextIndex forward again
+			rf.nextIndex[peer] = min(preNext, rf.nextIndex[peer])
 			LOG(rf.me, rf.currentTerm, DLog, "Log not matched in %d, Update next=%d", args.PrevLogIndex, rf.nextIndex[peer])
 			return
 		}
@@ -148,7 +182,7 @@ func (rf *Raft) startReplication(term int) bool {
 
 		// TODO: need compute the new commitIndex here
 		majorityIndexLocked := rf.getMajorityIndexLocked()
-		if majorityIndexLocked > rf.commitIndex {
+		if majorityIndexLocked > rf.commitIndex && rf.log[majorityIndexLocked].Term == rf.currentTerm {
 			LOG(rf.me, rf.currentTerm, DApply, "Leader update the commit index %d->%d", rf.commitIndex, majorityIndexLocked)
 			rf.commitIndex = majorityIndexLocked
 			rf.applyCond.Signal()

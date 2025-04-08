@@ -15,3 +15,8 @@ const (
 	Leader    Role = "Leader"
 	Candidate Role = "Candidate"
 )
+
+const (
+	InvalidTerm  int = 0
+	InvalidIndex int = 0
+)
